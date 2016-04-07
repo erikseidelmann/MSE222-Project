@@ -1,7 +1,7 @@
 function animate_ball(angle_weird, angle_more_weird, time, vx_ball,vy_ball, r_ball, x_ball, y_ball, angle_ball, x_cart, y_cart, cart_angle)
 theta = [0:(1*pi/180):(360*pi/180)]
 
-for i = 1:5:(length(angle_ball))
+for i = 1:4:(length(angle_ball))
     
     
     for j = 1:length(theta)

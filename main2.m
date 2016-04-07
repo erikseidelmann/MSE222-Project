@@ -319,14 +319,14 @@ data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
 %% Ball finds hope in darkness
 % Straight slope
 index_pipe_top_start = length(time);
-omega(index_pipe_top_start+1) = 5/7*omega(index_pipe_top_start);
+omega(index_pipe_top_start+1) = 4/7*omega(index_pipe_top_start);
 vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball;
 vy_ball(index_pipe_top_start+1) = 0;
 time(index_pipe_top_start+1) = time(index_pipe_top_start) + 0.001;
 x_ball(index_pipe_top_start+1) = x_ball(index_pipe_top_start);
 y_ball(index_pipe_top_start+1) = y_ball(index_pipe_top_start);
 l = index_pipe_top_start+2;
-a_x = -0.3;
+a_x = -0.2;
 a_y = 0;
 t_step = 0.001;
 while x_ball(l-1) < 0.0791+0.195
@@ -362,10 +362,10 @@ l = index_proj_start+2;
 a_x = 0;
 a_y = -g;
 t_step = 0.001;
-% syms t2
-% t_max_projectile_2 = vpasolve(-1/2*g*t2^2-255/441*vx_ball(index_proj_start)*t2+0.0255,t2)
+syms t2
+t_max_projectile_2 = vpasolve(-1/2*g*t2^2-255/441*vx_ball(index_proj_start)*t2+0.0255,t2)
 
-while time(l-1)-time(index_proj_start) <  1.2*0.051427348524224903787683960221078 %t_max_projectile_2(2)
+while time(l-1)-time(index_proj_start) < t_max_projectile_2(2) %1.2*0.051427348524224903787683960221078 %t_max_projectile_2(2)
     time(l) = time(l-1) + t_step;
     vx_ball(l) = vx_ball(l-1) + t_step*a_x;
     x_ball(l) = x_ball(l-1) + t_step*vx_ball(l-1) + 1/2*t_step^2*a_x;
@@ -773,13 +773,13 @@ for i = 1:length(time)
 %     theta_bb(i,1) = 0;
 %     end
 %     
-    if (i > 1870)
+    if (i > index_proj_bb)
         
         theta_bb(i,1) = theta_bb(i-1,1) + 0.001;
         
     end
     
-    if (i > 2919) 
+    if (i > index_projectile_lg_start) 
         
        theta_bb(i,1) = 0;
         
