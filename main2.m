@@ -74,7 +74,7 @@ vx_ball(i+1) = sqrt(x(1));
 vy_ball(i+1) = 0;
 omega(i+1) = -sqrt(x(2));
 %the time after the spring is 0.03s
-time(i+1) = 0.03;
+time(i+1) = time(i) + 0.001;
 %transition to next part of the track
 x_ball(i+1) = x_ball(i);% + (time(i+1) - time(i))*vx_ball(i+1);
 y_ball(i+1) = y_ball(i);
@@ -319,9 +319,9 @@ data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
 %% Ball finds hope in darkness
 % Straight slope
 index_pipe_top_start = length(time);
-vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start)*r_ball;
+omega(index_pipe_top_start+1) = 5/7*omega(index_pipe_top_start);
+vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball;
 vy_ball(index_pipe_top_start+1) = 0;
-omega(index_pipe_top_start+1) = omega(index_pipe_top_start);
 time(index_pipe_top_start+1) = time(index_pipe_top_start) + 0.001;
 x_ball(index_pipe_top_start+1) = x_ball(index_pipe_top_start);
 y_ball(index_pipe_top_start+1) = y_ball(index_pipe_top_start);
@@ -365,7 +365,7 @@ t_step = 0.001;
 % syms t2
 % t_max_projectile_2 = vpasolve(-1/2*g*t2^2-255/441*vx_ball(index_proj_start)*t2+0.0255,t2)
 
-while time(l-1)-time(index_proj_start) <  0.051427348524224903787683960221078 %t_max_projectile_2(2)
+while time(l-1)-time(index_proj_start) <  1.2*0.051427348524224903787683960221078 %t_max_projectile_2(2)
     time(l) = time(l-1) + t_step;
     vx_ball(l) = vx_ball(l-1) + t_step*a_x;
     x_ball(l) = x_ball(l-1) + t_step*vx_ball(l-1) + 1/2*t_step^2*a_x;
@@ -498,7 +498,7 @@ data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
 index_proj_bb = length(time);
 theta_bb(index_proj_bb) = 0;
 vx_ball(index_proj_bb+1) = vx_ball(index_proj_bb);
-vy_ball(index_proj_bb+1) = 0;
+vy_ball(index_proj_bb+1) = vy_ball(index_proj_bb);
 
 
 v = sqrt((vx_ball(index_proj_bb+1))^2 + (vy_ball(index_proj_bb+1))^2);
@@ -811,8 +811,8 @@ animate_ball(theta_bb(start_val:length(theta_bb)), theta_lg(start_val:length(x_b
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega]
 
 %% Draw Plots
-[impulse, impulse_angle]= impulse_linear(x_impulse, y_impulse, time)
-[a_linear, a_linear_angle] = acceleration_linear(vx_ball, vy_ball, time)
-a_angular = acceleration_anglular(omega, time)
+[impulse, impulse_angle]= impulse_linear(x_impulse, y_impulse, time);
+[a_linear, a_linear_angle] = acceleration_linear(vx_ball, vy_ball, time);
+a_angular = acceleration_anglular(omega, time);
 plot_graphs(x_ball,y_ball,vx_ball, vy_ball, omega, a_linear, a_linear_angle, a_angular, impulse,impulse_angle, angular_impulse, time)
 
