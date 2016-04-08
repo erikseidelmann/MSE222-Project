@@ -325,8 +325,8 @@ data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
 %% Ball finds hope in darkness
 % Straight slope
 index_pipe_top_start = length(time);
-omega(index_pipe_top_start+1) = 7/4*omega(index_pipe_top_start);
-vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball*(4/7)^2;
+omega(index_pipe_top_start+1) = 7*omega(index_pipe_top_start);
+vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball*4/7;
 vy_ball(index_pipe_top_start+1) = 0;
 time(index_pipe_top_start+1) = time(index_pipe_top_start) + 0.001;
 x_ball(index_pipe_top_start+1) = x_ball(index_pipe_top_start);
@@ -812,7 +812,7 @@ window_x = [0;0;x_right];
 window_y = [y_top;0;0];
 draw_board1();
 start_val  = 1;
-animate_ball(theta_bb(start_val:length(theta_bb)), theta_lg(start_val:length(x_ball)), time(start_val:length(x_ball)), vx_ball(start_val:length(x_ball)),vy_ball(start_val:length(x_ball)), r_ball, x_ball(start_val:length(x_ball)), y_ball(start_val:length(x_ball)), angle_ball(start_val:length(x_ball)),x_cart(start_val:length(x_ball)),y_cart(start_val:length(x_ball)), theta_cart(start_val:length(x_ball)))
+%animate_ball(theta_bb(start_val:length(theta_bb)), theta_lg(start_val:length(x_ball)), time(start_val:length(x_ball)), vx_ball(start_val:length(x_ball)),vy_ball(start_val:length(x_ball)), r_ball, x_ball(start_val:length(x_ball)), y_ball(start_val:length(x_ball)), angle_ball(start_val:length(x_ball)),x_cart(start_val:length(x_ball)),y_cart(start_val:length(x_ball)), theta_cart(start_val:length(x_ball)))
 %comet(1000*x_ball(start_val:length(x_ball)),1000*y_ball(start_val:length(y_ball)),0)
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega]
 
