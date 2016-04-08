@@ -1,9 +1,6 @@
 clear all
 close all
 clc
-
-a_factor = 1;
-    
 data = zeros(1,9);%[time, x_ball, y_ball, vx_ball, vy_ball, omega, ax_ball, ay_ball, alpha];
 
 implulses = zeros(1,4);%[x_impulse, y_impulse, angular_impulse, time];
@@ -20,10 +17,7 @@ y_top = 0.30;%height of the board
 x_right = 0.30; %width of the board
 m_ball= 0.006; % Mass of Ball
 r_ball = 0.00815; %Radius of Ball
-I_ball = (2/5*m_ball*r_ball^2)*1.1; %Moment of inertia of ball
-
-
-
+I_ball = 2/5*m_ball*r_ball^2; %Moment of inertia of ball
 g = 9.81;  %gravity of the Earth at sea level
 time(1) = 0;%:0.05:4; %Hardcoded time of which ball is still in contact with the spring
 x_ball(1) = 0.016; %Initial x position of ball at t= t1
@@ -34,6 +28,9 @@ omega(1) = 0;%Initial angular v of ball at t= t1
 ax_ball(1) = 0;%Initial x acceleration of ball at t= t1
 ay_ball(1) = 0;%Initial y acceleration of ball at t= t1
 alpha(1) = 0;%Initial alpha of ball at t= t1
+Nx(1) = 0;
+Ny(1) = 0;
+N(1) = 0;
 %Matrix of data containing all of the ball values. When we call this matrix
 %it updates the values at that certain time
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega, ax_ball, ay_ball, alpha];
@@ -60,6 +57,9 @@ for i=2:length(x_spring)
     ax_ball(i,1) = a_spring(i-1);
     ay_ball(i,1) = 0;
     alpha(i,1) = 0;
+    Nx(i,1) = -a_spring(i-1)*m_ball;
+    Ny(i,1) = -g*m_ball;
+    N(i,1) = sqrt(Ny(i)^2 + Nx(i)^2);
 end
 %% Ball leaves spring into track
 % Assume sudden no-slip
@@ -79,8 +79,9 @@ x = A\b;
 vx_ball(i+1) = sqrt(x(1));
 vy_ball(i+1) = 0;
 omega(i+1) = -sqrt(x(2));
+N(i+1) = -g*m_ball;
 %the time after the spring is 0.03s
-time(i+1) = time(i) + 0.001;
+time(i+1) = 0.03;
 %transition to next part of the track
 x_ball(i+1) = x_ball(i);% + (time(i+1) - time(i))*vx_ball(i+1);
 y_ball(i+1) = y_ball(i);
@@ -95,6 +96,9 @@ while x_ball(j-1) <= 0.169
     vx_ball(j) = vx_ball(i+1);
     vy_ball(j) = vy_ball(i+1);
     omega(j) = omega(i+1);
+    Nx(j) = 0;
+    Ny(j) = -g*m_ball;
+    N(j) = g*m_ball;
     % alpha(j) = 0;
     % ax_ball(j) = 0;
     % ay_ball(j) = 0;
@@ -111,9 +115,11 @@ index_curve_enter = j-1
 %% Ball Enters and Travels through curve
 % Assume Omega changes direction instantaneously
 omega(index_curve_enter) = -omega(index_curve_enter);
+
 %diameter of the half pipe and radius
 d_curve = 0.1114;
 r_curve = d_curve/2;
+N(index_curve_enter) = omega(index_curve_enter)^2*r_curve;
 %Solve curve ODE
 [t_unf,theta_unf,omega_curve_unf] = solve_curve(r_ball,r_curve,omega(index_curve_enter));
 %Filter curve ODE
@@ -136,6 +142,8 @@ for k = 2:length(theta)%index_curve_enter+1:length(time)
     vx_ball = vertcat(vx_ball,omega_curve(k)*r_curve*sin(pi/2-theta(k)));
     vy_ball = vertcat(vy_ball,-omega_curve(k)*r_curve*cos(pi/2-theta(k)));
     omega = vertcat(omega, omega_ball_curve(k));
+    %N(k) = ;
+    N = vertcat(N, omega_ball_curve(k)^2*r_ball);
     ax_ball = vertcat(ax_ball,0);
     ay_ball = vertcat(ay_ball,0);
     alpha = vertcat(alpha,0);
@@ -158,6 +166,7 @@ omega(index_leave_curve+1) = omega(index_leave_curve);
 time(index_leave_curve+1) = time(index_leave_curve) + 0.001;
 x_ball(index_leave_curve+1) = x_ball(index_leave_curve) + (time(index_leave_curve+1) - time(index_leave_curve))*vx_ball(index_leave_curve);
 y_ball(index_leave_curve+1) = y_ball(index_leave_curve);
+N(index_leave_curve+1) = N(index_leave_curve);
 l = index_leave_curve+2;
 while x_ball(l-1) > 0.156 %0.17-0.018 = 0.152 is ideal
     time(l) = time(l-1) + 0.001;
@@ -169,6 +178,8 @@ while x_ball(l-1) > 0.156 %0.17-0.018 = 0.152 is ideal
     vy_ball(l) = vy_ball(index_leave_curve+1);
     %Omega is the same for the entire flat section 
     omega(l) = omega(index_leave_curve+1);
+    
+    N(l) = -g*m_ball;
     % alpha(l) = 0;
     % ax_ball(l) = 0;
     % ay_ball(l) = 0;
@@ -199,7 +210,7 @@ omega(index_enters_ramp+1) = v*r_ball;
 %time is increased by 1 ms
 time(index_enters_ramp+1) = time(index_enters_ramp) + 0.001;
 
-
+N(index_enters_ramp+1) = N(index_enters_ramp);
 x_impulse (index_enters_ramp+1,1) = m_ball*(vx_ball(index_enters_ramp+1)-vx_ball(index_enters_ramp));
 y_impulse(index_enters_ramp+1,1)= m_ball*(vy_ball(index_enters_ramp+1)-vy_ball(index_enters_ramp));
 angular_impulse(index_enters_ramp+1,1) = I_ball*(omega(index_enters_ramp+1) - omega(index_enters_ramp));
@@ -229,6 +240,7 @@ while x_ball(l-1) > 0.0985 %0.17-0.018-56.61cos19.1 is ideal
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     %omega = v/r ie. NO slip condition
     omega(l) = sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
 end
 %Calling data to update values of ball
@@ -257,6 +269,7 @@ x_impulse (index_projectile_start+1,1) = m_ball*(vx_ball(index_projectile_start+
 y_impulse(index_projectile_start+1,1)= m_ball*(vy_ball(index_projectile_start+1)-vy_ball(index_projectile_start));;
 angular_impulse(index_projectile_start+1,1) = I_ball*(omega(index_projectile_start+1) - omega(index_projectile_start));
 time(index_projectile_start+1) = time(index_projectile_start) + 0.001;
+N(index_projectile_start+1) = 0;
 
 
 
@@ -282,6 +295,7 @@ while time(l-1)-time(index_projectile_start) <  1.15*0.0934269216621303944187690
     %omega = v/r
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = omega(index_projectile_start); % Non-slip condition
+    N(l) = 0;
     l = l+1;
 end
 
@@ -301,14 +315,15 @@ x_impulse (index_metal_start+1,1) = m_ball*(vx_ball(index_metal_start+1)-vx_ball
 y_impulse(index_metal_start+1,1)= m_ball*(vy_ball(index_metal_start+1)-vy_ball(index_metal_start));
 angular_impulse(index_metal_start+1,1) = I_ball*(omega(index_metal_start+1)-omega(index_metal_start));
 time(index_metal_start+1) = time(index_metal_start) + 0.001;
-
+%N(index_metal_start+1) = sqrt(x_impulse(index_metal_start+1,1)^2 + y_impulse(index_metal_start+1,1)^2)/(time(index_metal_start+1)-time(index_metal_start));
+N(index_metal_start+1) = 0;
 
 x_ball(index_metal_start+1) = x_ball(index_metal_start);
 y_ball(index_metal_start+1) = y_ball(index_metal_start);
 l = index_metal_start+2;
 %0.8 is a drag factor
-a_x = 0.8*g*sind(25)*cosd(25)*a_factor;
-a_y = -0.8*g*sind(25)*sind(25)*a_factor;
+a_x = 0.8*g*sind(25)*cosd(25);
+a_y = -0.8*g*sind(25)*sind(25);
 t_step = 0.001;
 while x_ball(l-1) < 0.0791
     time(l) = time(l-1) + t_step;
@@ -318,6 +333,7 @@ while x_ball(l-1) < 0.0791
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     %solving for omega no slip conditon
     omega(l) = -sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; 
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
 end
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
@@ -325,14 +341,15 @@ data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
 %% Ball finds hope in darkness
 % Straight slope
 index_pipe_top_start = length(time);
-omega(index_pipe_top_start+1) = 7*omega(index_pipe_top_start);
-vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball*4/7;
+omega(index_pipe_top_start+1) = 7/4*omega(index_pipe_top_start);
+vx_ball(index_pipe_top_start+1) = -omega(index_pipe_top_start+1)*r_ball*(4/7)^2;
 vy_ball(index_pipe_top_start+1) = 0;
+N(index_pipe_top_start+1) = N(index_pipe_top_start);
 time(index_pipe_top_start+1) = time(index_pipe_top_start) + 0.001;
 x_ball(index_pipe_top_start+1) = x_ball(index_pipe_top_start);
 y_ball(index_pipe_top_start+1) = y_ball(index_pipe_top_start);
 l = index_pipe_top_start+2;
-a_x = -0.2*a_factor;
+a_x = -0.3;
 a_y = 0;
 t_step = 0.001;
 while x_ball(l-1) < 0.0791+0.195
@@ -342,6 +359,7 @@ while x_ball(l-1) < 0.0791+0.195
     vy_ball(l) = 0;
     y_ball(l) = y_ball(l-1);
     omega(l) = -sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
+    N(l) = -g*m_ball;
     l = l+1;
 end
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
@@ -352,7 +370,7 @@ index_proj_start = length(time);
 vx_ball(index_proj_start+1) = vx_ball(index_proj_start);
 vy_ball(index_proj_start+1) = 0;
 time(index_proj_start+1) = time(index_proj_start) + 0.001;
-
+N(index_proj_start+1) = 0;
 v = sqrt((vx_ball(index_proj_start+1))^2 + (vy_ball(index_proj_start+1))^2);
 omega(index_proj_start+1) = r_ball*v;
 
@@ -372,18 +390,19 @@ syms t2
 t_max_projectile_2 = vpasolve(-1/2*g*t2^2-255/441*vx_ball(index_proj_start)*t2+0.0255,t2)
 
 while time(l-1)-time(index_proj_start) < t_max_projectile_2(2) %1.2*0.051427348524224903787683960221078 %t_max_projectile_2(2)
-    time(l) = time(l-1) + t_step;
+   time(l) = time(l-1) + t_step;
     vx_ball(l) = vx_ball(l-1) + t_step*a_x;
     x_ball(l) = x_ball(l-1) + t_step*vx_ball(l-1) + 1/2*t_step^2*a_x;
     vy_ball(l) = vy_ball(l-1) + t_step*a_y;
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = omega(index_proj_start);
+    N(l) = 0;
     % Non-slip condition
     l = l+1;
 end
 
 %% Ramp into the jaws of death
-% Assume Straight slope
+% Assume linear slope
 index_slope_death_start = length(time);
 vx_ball(index_slope_death_start+1) = 0; %omega(index_slope_death_start)*r_ball;
 vy_ball(index_slope_death_start+1) = 0;
@@ -395,6 +414,12 @@ l = index_slope_death_start+2;
 a_x = -0.8*g*sind(30)*cosd(30); %0.8 is a drag factor
 a_y = -0.8*g*sind(30)*sind(30);
 t_step = 0.001;
+N(index_slope_death_start+1) = 0;
+x_impulse (index_slope_death_start+1,1) = m_ball*(vx_ball(index_slope_death_start+1)-vx_ball(index_slope_death_start));
+y_impulse(index_slope_death_start+1,1)= m_ball*(vy_ball(index_slope_death_start+1)-vy_ball(index_slope_death_start));
+angular_impulse(index_slope_death_start+1,1) = I_ball*(omega(index_slope_death_start+1)-omega(index_slope_death_start));
+time(index_slope_death_start+1) = time(index_slope_death_start) + 0.001;
+
 while x_ball(l-1) > 0.0791+0.195
     time(l) = time(l-1) + t_step;
     vx_ball(l) = vx_ball(l-1) + t_step*a_x;
@@ -402,6 +427,7 @@ while x_ball(l-1) > 0.0791+0.195
     vy_ball(l) = vy_ball(l-1) + t_step*a_y;
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
 end
 
@@ -414,7 +440,7 @@ time(index_pipe_bottom_start+1) = time(index_pipe_bottom_start) + 0.001;
 
 v = sqrt((vx_ball(index_pipe_bottom_start+1))^2 + (vy_ball(index_pipe_bottom_start+1))^2);
 omega(index_pipe_bottom_start+1) = v*r_ball;
-
+N(index_pipe_bottom_start+1) = -g*m_ball;
 x_impulse (index_pipe_bottom_start+1,1) = m_ball*(vx_ball(index_pipe_bottom_start+1)-vx_ball(index_pipe_bottom_start));
 y_impulse(index_pipe_bottom_start+1,1)= m_ball*(vy_ball(index_pipe_bottom_start+1)-vy_ball(index_pipe_bottom_start));
 angular_impulse(index_pipe_bottom_start+1,1) = I_ball*(omega(index_pipe_bottom_start+1) - omega(index_pipe_bottom_start));
@@ -423,7 +449,7 @@ angular_impulse(index_pipe_bottom_start+1,1) = I_ball*(omega(index_pipe_bottom_s
 x_ball(index_pipe_bottom_start+1) = x_ball(index_pipe_bottom_start);
 y_ball(index_pipe_bottom_start+1) = y_ball(index_pipe_bottom_start);
 l = index_pipe_bottom_start+2;
-a_x = 0.1*a_factor;
+a_x = 0.1;
 a_y = 0;
 t_step = 0.001;
 while x_ball(l-1) > 0.028
@@ -433,6 +459,7 @@ while x_ball(l-1) > 0.028
     vy_ball(l) = 0;
     y_ball(l) = y_ball(l-1);
     omega(l) = sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
+    N(l) = -g*m_ball;
     l = l+1;
 end
 
@@ -449,6 +476,7 @@ omega(index_bb_start+1) = 0; %omega(index_bb_start);
 time(index_bb_start+1) = time(index_bb_start) + 0.001;
 x_ball(index_bb_start+1) = x_ball(index_bb_start);
 y_ball(index_bb_start+1) = y_ball(index_bb_start);
+N(index_bb_start+1) = N(index_bb_start);
 
 l = index_bb_start+2;
 r=0
@@ -467,6 +495,7 @@ while theta_bb(l-1) > -tol_angle*pi/180
     vy_ball(l) = omega_bb(l-1)*r_x;
     y_ball(l) = y_ball(index_bb_start+1) + theta_bb(l-1)*r_x;
     omega(l) = 0;
+    N(l) = (g - a_y)*m_ball;
     data = [time(l), x_ball(l), y_ball(l), vx_ball(l), vy_ball(l), omega(l), theta_bb(l), omega_bb(l)]
     l = l+1;
 end
@@ -495,6 +524,7 @@ while r < 0.0275
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = -(sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball); % Non-slip condition
     theta_bb(l) = theta_bb(index_ramp_bb);
+    N(l) = (g - a_y)*m_ball;
     l = l+1;
 end
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
@@ -505,7 +535,7 @@ index_proj_bb = length(time);
 theta_bb(index_proj_bb) = 0;
 vx_ball(index_proj_bb+1) = vx_ball(index_proj_bb);
 vy_ball(index_proj_bb+1) = vy_ball(index_proj_bb);
-
+N(index_proj_bb+1) = 0;
 
 v = sqrt((vx_ball(index_proj_bb+1))^2 + (vy_ball(index_proj_bb+1))^2);
 
@@ -536,6 +566,7 @@ while y_ball(l-1) > 0.088 %
     vy_ball(l) = vy_ball(l-1) + t_step*a_y;
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = omega(index_proj_bb+1); % Non-slip condition
+    N(l) = 0;
     l = l+1;
 end
 
@@ -558,7 +589,7 @@ index_lg_start = length(time);
 omega_lg(index_lg_start+1) = -m_ball*0.0117*vy_ball(index_lg_start)/15387.62*10^9.5
 vx_ball(index_lg_start+1) = 0; %omega(index_lg_start)*r_ball;
 vy_ball(index_lg_start+1) = 0;
-
+N(index_lg_start+1) = 0;
 v = sqrt((vx_ball(index_lg_start+1))^2 + (vy_ball(index_lg_start+1))^2);
 
 omega(index_lg_start+1) = v*r_ball;
@@ -589,6 +620,7 @@ while theta_lg(l-1) < tol_angle*pi/180
     y_ball(l) = y_ball(index_lg_start+1) + theta_lg(l-1)*r_x;
     omega(l) = 0;
     data = [time(l), x_ball(l), y_ball(l), vx_ball(l), vy_ball(l), omega(l), theta_lg(l), omega_lg(l)]
+    N(l) = 0;  % big assumption here that there is no force on the small rotator
     l = l+1;
 end
 %% Ramp into the train
@@ -604,6 +636,7 @@ y_ball(index_slope_lg_start+1) = y_ball(index_slope_lg_start);
 l = index_slope_lg_start+2;
 a_x = -g*sind(tol_angle)*cosd(tol_angle); %0.8 is a drag factor
 a_y = -g*sind(tol_angle)*sind(tol_angle);
+N(index_slope_lg_start+1) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
 t_step = 0.001;
 
 while y_ball(l-1) - y_ball(index_slope_lg_start+1) > -0.0111
@@ -614,6 +647,7 @@ while y_ball(l-1) - y_ball(index_slope_lg_start+1) > -0.0111
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l) + 1/2*t_step^2*a_y;
     omega(l) = sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
     theta_lg(l) = theta_lg(index_slope_lg_start);
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
 end
 
@@ -626,6 +660,7 @@ time(index_projectile_lg_start+1) = time(index_projectile_lg_start) + 0.001;
 x_ball(index_projectile_lg_start+1) = x_ball(index_projectile_lg_start);% + 0.001*vx_ball(index_projectile_lg_start);
 y_ball(index_projectile_lg_start+1) = y_ball(index_projectile_lg_start);
 l = index_projectile_lg_start+2;
+N(index_projectile_lg_start+1) = 0;
 %Zero acceleration in the x direction for projectile motion
 a_x = 0;
 a_y = -g;
@@ -639,6 +674,7 @@ x_ball(l) = x_ball(l-1) + t_step*vx_ball(l-1) + 1/2*t_step^2*a_x;
 vy_ball(l) = vy_ball(l-1) + t_step*a_y;
 y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
 omega(l) = omega(index_projectile_lg_start); % Non-slip condition
+N(l) = 0;
 l = l+1;
 end
 
@@ -656,7 +692,7 @@ x_impulse (index_incart_start+1,1) = m_ball*(vx_ball(index_incart_start+1)-vx_ba
 y_impulse(index_incart_start+1,1)= m_ball*(vy_ball(index_incart_start+1)-vy_ball(index_incart_start));
 angular_impulse(index_incart_start+1,1) = I_ball *omega(index_incart_start);
 time(index_incart_start+1) = time(index_incart_start) + 0.001;
-
+N(index_incart_start+1) = 0;
 
 x_ball(index_incart_start+1) = x_ball(index_incart_start);
 y_ball(index_incart_start+1) = y_ball(index_incart_start);
@@ -672,6 +708,7 @@ while x_ball(l-1) < 0.03
     vy_ball(l) = vy_ball(l-1) + t_step*a_y;
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     omega(l) = -sqrt(vx_ball(l)^2 + vy_ball(l)^2)/r_ball; % Non-slip condition
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
 end
 
@@ -697,6 +734,7 @@ l = index_withcart_start+2;
 angle_cart = 9.83;
 a_x = g*sind(angle_cart)*cosd(angle_cart); %0.8 is a drag factor
 a_y = -g*sind(angle_cart)*sind(angle_cart);
+N(index_withcart_start+1) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
 t_step = 0.001;
 while x_ball(l-1) < 0.18
     time(l) = time(l-1) + t_step;
@@ -707,6 +745,7 @@ while x_ball(l-1) < 0.18
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1) + 1/2*t_step^2*a_y;
     y_cart(l) = y_cart(l-1) + 1000*(y_ball(l)- y_ball(l-1)) ;
     omega(l) = 0; % Non-slip condition
+    N(l) = sqrt(((a_y*m_ball) + m_ball*g)^2 + (a_x*m_ball)^2);
     l = l+1;
     index_rotate = l;
 end
@@ -723,6 +762,7 @@ x_ball(index_withcart_start+1) = x_ball(index_withcart_start);
 y_ball(index_withcart_start+1) = y_ball(index_withcart_start);
 x_cart(index_withcart_start+1) = x_cart(index_withcart_start);
 y_cart(index_withcart_start+1) = y_cart(index_withcart_start);
+N(index_withcart_start+1) = -g*m_ball;
 l = index_withcart_start+2;
 t_step = 0.001;
 while x_ball(l-1) < 0.28
@@ -734,6 +774,7 @@ while x_ball(l-1) < 0.28
     y_ball(l) = y_ball(l-1) + t_step*vy_ball(l-1);
     y_cart(l) = y_cart(l-1) + 1000*(y_ball(l) - y_ball(l-1));
     omega(l) = 0; % Non-slip condition
+    N(l) = -g*m_ball;
     l = l+1;
 end
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega];
@@ -779,13 +820,13 @@ for i = 1:length(time)
 %     theta_bb(i,1) = 0;
 %     end
 %     
-    if (i > index_proj_bb)
+    if (i > 1870)
         
         theta_bb(i,1) = theta_bb(i-1,1) + 0.001;
         
     end
     
-    if (i > index_projectile_lg_start) 
+    if (i > 2919) 
         
        theta_bb(i,1) = 0;
         
@@ -812,12 +853,17 @@ window_x = [0;0;x_right];
 window_y = [y_top;0;0];
 draw_board1();
 start_val  = 1;
-%animate_ball(theta_bb(start_val:length(theta_bb)), theta_lg(start_val:length(x_ball)), time(start_val:length(x_ball)), vx_ball(start_val:length(x_ball)),vy_ball(start_val:length(x_ball)), r_ball, x_ball(start_val:length(x_ball)), y_ball(start_val:length(x_ball)), angle_ball(start_val:length(x_ball)),x_cart(start_val:length(x_ball)),y_cart(start_val:length(x_ball)), theta_cart(start_val:length(x_ball)))
+animate_ball(theta_bb(start_val:length(theta_bb)), theta_lg(start_val:length(x_ball)), time(start_val:length(x_ball)), vx_ball(start_val:length(x_ball)),vy_ball(start_val:length(x_ball)), r_ball, x_ball(start_val:length(x_ball)), y_ball(start_val:length(x_ball)), angle_ball(start_val:length(x_ball)),x_cart(start_val:length(x_ball)),y_cart(start_val:length(x_ball)), theta_cart(start_val:length(x_ball)))
 %comet(1000*x_ball(start_val:length(x_ball)),1000*y_ball(start_val:length(y_ball)),0)
 data = [time, x_ball, y_ball, vx_ball, vy_ball, omega]
 
+%Cplot(N)
+
 %% Draw Plots
-[impulse, impulse_angle]= impulse_linear(x_impulse, y_impulse, time);
-[a_linear, a_linear_angle] = acceleration_linear(vx_ball, vy_ball, time);
-a_angular = acceleration_anglular(omega, time);
-plot_graphs(x_ball,y_ball,vx_ball, vy_ball, omega, a_linear, a_linear_angle, a_angular, impulse,impulse_angle, angular_impulse, time);
+[impulse, impulse_angle]= impulse_linear(x_impulse, y_impulse, time)
+[a_linear, a_linear_angle] = acceleration_linear(vx_ball, vy_ball, time)
+a_angular = acceleration_anglular(omega, time)
+plot_graphs(x_ball,y_ball,vx_ball, vy_ball, omega, a_linear, a_linear_angle, a_angular, impulse,impulse_angle, angular_impulse, time)
+
+% Status API Training Shop Blog About
+% © 2016 GitHub, Inc. Terms Privacy Security Contact Help
